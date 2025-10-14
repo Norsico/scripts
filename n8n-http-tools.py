@@ -17,11 +17,12 @@ if sys.platform == 'win32':
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
 
-# 添加当前目录到路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# 添加模块目录到路径
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'n8n-http-interface'))
 
 # 导入工具模块
 from save_base64 import save_base64_file_core
+from get_bilibili_subtitle import get_bilibili_subtitle_core
 
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
@@ -42,18 +43,12 @@ def index():
             {
                 "path": "/save-base64",
                 "method": "POST",
-                "description": "保存 Base64 数据到本地文件，自动识别文件类型",
-                "body": {
-                    "data": "Base64 编码的数据（必需）",
-                    "path": "输出文件路径（必需）",
-                    "force_ext": "强制使用的扩展名（可选）",
-                    "auto_extension": "是否自动添加扩展名，默认 true（可选）"
-                },
-                "example": {
-                    "data": "iVBORw0KGgo...",
-                    "path": "output/image",
-                    "auto_extension": True
-                }
+                "description": "保存 Base64 数据到本地文件，自动识别文件类型"
+            },
+            {
+                "path": "/get-bilibili-subtitle",
+                "method": "POST",
+                "description": "获取B站视频字幕"
             },
             {
                 "path": "/health",
@@ -140,6 +135,58 @@ def api_save_base64():
         }), 500
 
 
+@app.route('/get-bilibili-subtitle', methods=['POST'])
+def api_get_bilibili_subtitle():
+    """
+    获取B站视频字幕
+    
+    POST Body:
+    {
+        "url": "https://www.bilibili.com/video/BV1DdDAYfEWQ",
+        "text_only": true  // 可选，默认 true（去除时间戳）
+    }
+    """
+    try:
+        body = request.get_json()
+        
+        if not body:
+            return jsonify({
+                "success": False,
+                "error": "请求体不能为空"
+            }), 400
+        
+        if 'url' not in body:
+            return jsonify({
+                "success": False,
+                "error": "缺少必需参数: url"
+            }), 400
+        
+        video_url = body['url']
+        text_only = body.get('text_only', True)
+        
+        # 调用异步函数
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(
+            get_bilibili_subtitle_core(video_url, text_only)
+        )
+        loop.close()
+        
+        if result.get('success'):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """404 错误处理"""
@@ -172,6 +219,8 @@ def main():
     print("\n可用 API:")
     print(f"  POST http://{HOST}:{PORT}/save-base64")
     print("    - 保存 Base64 数据到本地文件")
+    print(f"  POST http://{HOST}:{PORT}/get-bilibili-subtitle")
+    print("    - 获取B站视频字幕")
     print("\n按 Ctrl+C 停止服务")
     print("=" * 60)
     print()
