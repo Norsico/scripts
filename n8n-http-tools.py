@@ -10,6 +10,13 @@ from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# 解决 Windows 控制台中文乱码问题
+if sys.platform == 'win32':
+    os.system('chcp 65001 >nul 2>&1')
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
