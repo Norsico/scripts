@@ -34,17 +34,6 @@ start-http-tools.bat
 }
 ```
 
-**n8n 配置：**
-- Method: POST
-- URL: `http://127.0.0.1:6666/save-base64`
-- Body:
-  ```json
-  {
-    "data": "{{$json[\"base64_data\"]}}",
-    "path": "C:\\output\\{{$json[\"filename\"]}}"
-  }
-  ```
-
 **支持格式：** JPG, PNG, GIF, WebP, BMP, MP3, WAV, OGG, FLAC, MP4, WebM, PDF, ZIP, JSON, XML
 
 ### 2. 获取B站字幕
@@ -59,17 +48,6 @@ start-http-tools.bat
   "text_only": true
 }
 ```
-
-**n8n 配置：**
-- Method: POST
-- URL: `http://127.0.0.1:6666/get-bilibili-subtitle`
-- Body:
-  ```json
-  {
-    "url": "{{$json[\"video_url\"]}}",
-    "text_only": true
-  }
-  ```
 
 ## 许可证
 
