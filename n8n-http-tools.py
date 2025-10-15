@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'n8n
 # 导入工具模块
 from save_base64 import save_base64_file_core
 from get_bilibili_subtitle import get_bilibili_subtitle_core
+from tts_synthesis import tts_synthesis_core
 
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
@@ -49,6 +50,11 @@ def index():
                 "path": "/get-bilibili-subtitle",
                 "method": "POST",
                 "description": "获取B站视频字幕"
+            },
+            {
+                "path": "/tts-synthesis",
+                "method": "POST",
+                "description": "TTS 语音合成，批量生成音频文件"
             },
             {
                 "path": "/health",
@@ -187,6 +193,66 @@ def api_get_bilibili_subtitle():
         }), 500
 
 
+@app.route('/tts-synthesis', methods=['POST'])
+def api_tts_synthesis():
+    """
+    TTS 语音合成
+    
+    POST Body:
+    {
+        "text": {
+            "自述文案": ["文案1", "文案2", ...]
+        },
+        "prompt_audio_url": "https://example.com/audio.wav",
+        "save_path": "output/path",
+        "api_key": "your_api_key"
+    }
+    """
+    try:
+        body = request.get_json()
+        
+        if not body:
+            return jsonify({
+                "success": False,
+                "error": "请求体不能为空"
+            }), 400
+        
+        # 验证必需参数
+        required_params = ['text', 'prompt_audio_url', 'save_path', 'api_key']
+        for param in required_params:
+            if param not in body:
+                return jsonify({
+                    "success": False,
+                    "error": f"缺少必需参数: {param}"
+                }), 400
+        
+        text_dict = body['text']
+        prompt_audio_url = body['prompt_audio_url']
+        save_path = body['save_path']
+        api_key = body['api_key']
+        
+        # 调用核心函数
+        result = tts_synthesis_core(
+            text_dict=text_dict,
+            prompt_audio_url=prompt_audio_url,
+            save_path=save_path,
+            api_key=api_key
+        )
+        
+        if result.get('success'):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """404 错误处理"""
@@ -221,6 +287,8 @@ def main():
     print("    - 保存 Base64 数据到本地文件")
     print(f"  POST http://{HOST}:{PORT}/get-bilibili-subtitle")
     print("    - 获取B站视频字幕")
+    print(f"  POST http://{HOST}:{PORT}/tts-synthesis")
+    print("    - TTS 语音合成，批量生成音频文件")
     print("\n按 Ctrl+C 停止服务")
     print("=" * 60)
     print()

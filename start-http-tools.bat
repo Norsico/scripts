@@ -22,16 +22,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 检查 Flask 是否安装
-python -c "import flask" >nul 2>&1
+pip install -r requirements.txt
 if errorlevel 1 (
-    echo 检测到 Flask 未安装，正在安装...
-    pip install flask flask-cors
-    if errorlevel 1 (
-        echo 错误: Flask 安装失败
-        pause
-        exit /b 1
-    )
+    echo 错误: 安装依赖失败
+    pause
+    exit /b 1
 )
 
 REM 启动服务

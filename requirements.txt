@@ -1,9 +1,4 @@
-# n8n HTTP Tools 依赖
-
-# HTTP 服务器
 Flask>=2.3.0
 flask-cors>=4.0.0
-
-# 字幕提取工具依赖
 playwright>=1.40.0
-
+openai
