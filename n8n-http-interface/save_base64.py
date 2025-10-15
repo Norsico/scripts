@@ -120,12 +120,38 @@ def save_base64_file_core(
         final_extension = None
         if force_extension:
             final_extension = force_extension.lstrip('.')
-        elif auto_extension and not output_path.suffix:
+        elif auto_extension:
             final_extension = detected_ext
         
-        # 如果需要添加扩展名
-        if final_extension:
-            output_path = output_path.with_suffix(f'.{final_extension}')
+        # 检查路径是否是目录（没有文件名或以/结尾）
+        # 如果是目录路径，自动生成按序编号的文件名
+        if output_path.is_dir() or str(output_path).endswith(('/','\\')) or not output_path.suffix:
+            # 确保目录存在
+            if output_path.is_file():
+                # 如果路径是一个已存在的文件，使用其父目录
+                target_dir = output_path.parent
+            else:
+                # 如果路径是目录或不存在，当作目录处理
+                target_dir = output_path
+            
+            # 创建目录（如果不存在）
+            target_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 获取目录中已有的文件数量
+            existing_files = list(target_dir.iterdir())
+            file_count = len([f for f in existing_files if f.is_file()])
+            
+            # 生成新的编号（从1开始）
+            next_number = file_count + 1
+            
+            # 生成新的文件名：编号.扩展名
+            new_filename = f"{next_number}.{final_extension}" if final_extension else str(next_number)
+            output_path = target_dir / new_filename
+        else:
+            # 如果是完整的文件路径，按原逻辑处理
+            # 如果需要添加扩展名
+            if final_extension and not output_path.suffix:
+                output_path = output_path.with_suffix(f'.{final_extension}')
         
         # 创建目标目录（如果不存在）
         output_path.parent.mkdir(parents=True, exist_ok=True)
