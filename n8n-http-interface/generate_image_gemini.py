@@ -14,8 +14,9 @@ def generate_image_gemini_core(
     save_path: str,
     aspect_ratio: Optional[str] = None,
     added_prompt: Optional[str] = None,
-    base_url: str = "http://127.0.0.1:5345",
-    api_key: str = "123456Ab@"
+    base_url: str = "https://ai.xiangcao.de",
+    model: str = "gemini-2.5-flash-image-preview",
+    api_key: str = "sk-kMwO7Pqz0tcv0DtPIUjAFGlGA1IvEGMjOD3ObO7oFWiKuf6A"
 ) -> dict:
     """
     使用 Gemini 生成图片（核心函数）
@@ -33,7 +34,7 @@ def generate_image_gemini_core(
     """
     try:
         # 构建完整的 API 端点
-        endpoint = f"{base_url.rstrip('/')}/v1beta/models/gemini-2.5-flash-image:generateContent"
+        endpoint = f"{base_url.rstrip('/')}/v1beta/models/{model}:generateContent"
         
         # 设置请求头
         headers = {
