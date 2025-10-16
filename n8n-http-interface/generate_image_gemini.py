@@ -5,143 +5,8 @@ Google Gemini 图像生成模块
 
 import base64
 import requests
-import time
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
-
-
-def _request_with_retry(
-    endpoint: str,
-    request_body: dict,
-    headers: dict,
-    max_retries: int,
-    step_name: str = "生成"
-) -> Tuple[bool, Optional[str], Optional[str], Optional[Dict[Any, Any]]]:
-    """
-    带重试的图片生成请求
-    
-    Args:
-        endpoint: API 端点
-        request_body: 请求体
-        headers: 请求头
-        max_retries: 最大重试次数
-        step_name: 步骤名称（用于日志）
-    
-    Returns:
-        (成功标志, 图片数据base64, 生成的文本, 错误信息)
-    """
-    for attempt in range(1, max_retries + 1):
-        try:
-            response = requests.post(
-                endpoint,
-                json=request_body,
-                headers=headers,
-                timeout=120
-            )
-            
-            # 检查响应状态
-            if response.status_code != 200:
-                if attempt < max_retries:
-                    print(f"{step_name} 第 {attempt} 次尝试失败 (HTTP {response.status_code})，正在重试...")
-                    time.sleep(1)  # 短暂延迟后重试
-                    continue
-                else:
-                    return False, None, None, {
-                        "error": f"{step_name} API 请求失败: HTTP {response.status_code}",
-                        "details": response.text,
-                        "attempts": attempt
-                    }
-            
-            # 解析响应
-            response_data = response.json()
-            
-            # 检查是否有 candidates
-            if "candidates" not in response_data or len(response_data["candidates"]) == 0:
-                if attempt < max_retries:
-                    print(f"{step_name} 第 {attempt} 次尝试：API 未返回图像候选项，正在重试...")
-                    time.sleep(1)
-                    continue
-                else:
-                    return False, None, None, {
-                        "error": f"{step_name}：API 响应中没有找到图像候选项",
-                        "response": response_data,
-                        "attempts": attempt
-                    }
-            
-            candidate = response_data["candidates"][0]
-            if "content" not in candidate or "parts" not in candidate["content"]:
-                if attempt < max_retries:
-                    print(f"{step_name} 第 {attempt} 次尝试：API 响应格式不正确，正在重试...")
-                    time.sleep(1)
-                    continue
-                else:
-                    return False, None, None, {
-                        "error": f"{step_name}：API 响应格式不正确",
-                        "response": response_data,
-                        "attempts": attempt
-                    }
-            
-            # 查找图像数据
-            image_data = None
-            generated_text = None
-            
-            for part in candidate["content"]["parts"]:
-                if "inlineData" in part and "data" in part["inlineData"]:
-                    image_data = part["inlineData"]["data"]
-                elif "text" in part:
-                    generated_text = part["text"]
-            
-            # 检查是否找到了图像数据
-            if not image_data:
-                if attempt < max_retries:
-                    print(f"{step_name} 第 {attempt} 次尝试：未找到有效图像数据，正在重试...")
-                    time.sleep(1)
-                    continue
-                else:
-                    return False, None, None, {
-                        "error": f"{step_name}：未找到有效图像数据（已重试{attempt}次）",
-                        "text": generated_text,
-                        "response": response_data,
-                        "attempts": attempt
-                    }
-            
-            # 成功获取图像数据
-            if attempt > 1:
-                print(f"{step_name} 第 {attempt} 次尝试成功！")
-            return True, image_data, generated_text, None
-            
-        except requests.exceptions.Timeout:
-            if attempt < max_retries:
-                print(f"{step_name} 第 {attempt} 次尝试超时，正在重试...")
-                time.sleep(2)
-                continue
-            else:
-                return False, None, None, {
-                    "error": f"{step_name}：请求超时（已重试{attempt}次）",
-                    "attempts": attempt
-                }
-        except requests.exceptions.RequestException as e:
-            if attempt < max_retries:
-                print(f"{step_name} 第 {attempt} 次尝试网络错误: {str(e)}，正在重试...")
-                time.sleep(2)
-                continue
-            else:
-                return False, None, None, {
-                    "error": f"{step_name}：网络请求失败: {str(e)}",
-                    "attempts": attempt
-                }
-        except Exception as e:
-            # 对于其他异常，不重试
-            return False, None, None, {
-                "error": f"{step_name}：发生错误: {str(e)}",
-                "attempts": attempt
-            }
-    
-    # 不应该到达这里
-    return False, None, None, {
-        "error": f"{step_name}：未知错误",
-        "attempts": max_retries
-    }
+from typing import Optional
 
 
 def generate_image_gemini_core(
@@ -150,8 +15,7 @@ def generate_image_gemini_core(
     aspect_ratio: Optional[str] = None,
     added_prompt: Optional[str] = None,
     base_url: str = "http://127.0.0.1:5345",
-    api_key: str = "123456Ab@",
-    max_retries: int = 5
+    api_key: str = "123456Ab@"
 ) -> dict:
     """
     使用 Gemini 生成图片（核心函数）
@@ -163,7 +27,6 @@ def generate_image_gemini_core(
         added_prompt: 附加提示词（可选）。如果提供，将先用 prompt 生成图片，再用生成的图片+added_prompt 生成最终图片
         base_url: API 基础地址
         api_key: API 密钥
-        max_retries: 最大重试次数（默认5次），用于处理未返回有效图片的情况
     
     Returns:
         包含操作结果的字典
@@ -178,7 +41,7 @@ def generate_image_gemini_core(
             "Content-Type": "application/json"
         }
         
-        # ========== 第一步：使用 prompt 生成初始图片（带重试） ==========
+        # ========== 第一步：使用 prompt 生成初始图片 ==========
         request_body_step1 = {
             "contents": [{
                 "parts": [
@@ -195,19 +58,57 @@ def generate_image_gemini_core(
                 }
             }
         
-        # 使用重试机制发送第一次请求
-        success_step1, image_data_step1, generated_text_step1, error_step1 = _request_with_retry(
-            endpoint=endpoint,
-            request_body=request_body_step1,
+        # 发送第一次请求
+        response_step1 = requests.post(
+            endpoint,
+            json=request_body_step1,
             headers=headers,
-            max_retries=max_retries,
-            step_name="第一步"
+            timeout=120
         )
         
-        if not success_step1:
+        # 检查第一次响应状态
+        if response_step1.status_code != 200:
             return {
                 "success": False,
-                **error_step1
+                "error": f"第一步 API 请求失败: HTTP {response_step1.status_code}",
+                "details": response_step1.text
+            }
+        
+        # 解析第一次响应
+        response_data_step1 = response_step1.json()
+        
+        # 提取第一次生成的图像数据
+        if "candidates" not in response_data_step1 or len(response_data_step1["candidates"]) == 0:
+            return {
+                "success": False,
+                "error": "第一步：API 响应中没有找到生成的图像",
+                "response": response_data_step1
+            }
+        
+        candidate_step1 = response_data_step1["candidates"][0]
+        if "content" not in candidate_step1 or "parts" not in candidate_step1["content"]:
+            return {
+                "success": False,
+                "error": "第一步：API 响应格式不正确",
+                "response": response_data_step1
+            }
+        
+        # 查找第一次生成的图像数据
+        image_data_step1 = None
+        generated_text_step1 = None
+        
+        for part in candidate_step1["content"]["parts"]:
+            if "inlineData" in part and "data" in part["inlineData"]:
+                image_data_step1 = part["inlineData"]["data"]
+            elif "text" in part:
+                generated_text_step1 = part["text"]
+        
+        if not image_data_step1:
+            return {
+                "success": False,
+                "error": "第一步：未找到图像数据",
+                "text": generated_text_step1,
+                "response": response_data_step1
             }
         
         # ========== 第二步：如果有 added_prompt，使用图片+文字生成最终图片 ==========
@@ -238,22 +139,62 @@ def generate_image_gemini_core(
                     }
                 }
             
-            # 使用重试机制发送第二次请求
-            success_step2, image_data_step2, generated_text_step2, error_step2 = _request_with_retry(
-                endpoint=endpoint,
-                request_body=request_body_step2,
+            # 发送第二次请求
+            response_step2 = requests.post(
+                endpoint,
+                json=request_body_step2,
                 headers=headers,
-                max_retries=max_retries,
-                step_name="第二步"
+                timeout=120
             )
             
-            if not success_step2:
-                error_result = {
+            # 检查第二次响应状态
+            if response_step2.status_code != 200:
+                return {
                     "success": False,
-                    "step1_completed": True,
-                    **error_step2
+                    "error": f"第二步 API 请求失败: HTTP {response_step2.status_code}",
+                    "details": response_step2.text,
+                    "step1_completed": True
                 }
-                return error_result
+            
+            # 解析第二次响应
+            response_data_step2 = response_step2.json()
+            
+            # 提取第二次生成的图像数据
+            if "candidates" not in response_data_step2 or len(response_data_step2["candidates"]) == 0:
+                return {
+                    "success": False,
+                    "error": "第二步：API 响应中没有找到生成的图像",
+                    "response": response_data_step2,
+                    "step1_completed": True
+                }
+            
+            candidate_step2 = response_data_step2["candidates"][0]
+            if "content" not in candidate_step2 or "parts" not in candidate_step2["content"]:
+                return {
+                    "success": False,
+                    "error": "第二步：API 响应格式不正确",
+                    "response": response_data_step2,
+                    "step1_completed": True
+                }
+            
+            # 查找第二次生成的图像数据
+            image_data_step2 = None
+            generated_text_step2 = None
+            
+            for part in candidate_step2["content"]["parts"]:
+                if "inlineData" in part and "data" in part["inlineData"]:
+                    image_data_step2 = part["inlineData"]["data"]
+                elif "text" in part:
+                    generated_text_step2 = part["text"]
+            
+            if not image_data_step2:
+                return {
+                    "success": False,
+                    "error": "第二步：未找到图像数据",
+                    "text": generated_text_step2,
+                    "response": response_data_step2,
+                    "step1_completed": True
+                }
             
             # 使用第二次生成的图像作为最终结果
             final_image_data = image_data_step2
@@ -321,6 +262,16 @@ def generate_image_gemini_core(
         
         return result
         
+    except requests.exceptions.Timeout:
+        return {
+            "success": False,
+            "error": "请求超时，图像生成时间过长"
+        }
+    except requests.exceptions.RequestException as e:
+        return {
+            "success": False,
+            "error": f"网络请求失败: {str(e)}"
+        }
     except base64.binascii.Error as e:
         return {
             "success": False,
