@@ -44,6 +44,53 @@ FILE_SIGNATURES = {
     b'<?xml': ('xml', 'application/xml'),
 }
 
+# MIME类型到文件扩展名的映射
+MIME_TO_EXTENSION = {
+    # 图片格式
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/bmp': 'bmp',
+    'image/x-icon': 'ico',
+    'image/svg+xml': 'svg',
+    
+    # 音频格式
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/mp4': 'mp4',
+    'audio/wav': 'wav',
+    'audio/wave': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/flac': 'flac',
+    'audio/aac': 'aac',
+    
+    # 视频格式
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/x-flv': 'flv',
+    'video/quicktime': 'mov',
+    'video/x-msvideo': 'avi',
+    
+    # 文档格式
+    'application/pdf': 'pdf',
+    'application/zip': 'zip',
+    'application/x-rar-compressed': 'rar',
+    'application/x-7z-compressed': '7z',
+    
+    # 文本格式
+    'application/json': 'json',
+    'application/xml': 'xml',
+    'text/xml': 'xml',
+    'text/html': 'html',
+    'text/plain': 'txt',
+    'text/csv': 'csv',
+    
+    # 其他常见格式
+    'application/octet-stream': 'bin',
+}
+
 
 def detect_file_type(data: bytes) -> Tuple[str, str]:
     """
@@ -88,7 +135,8 @@ def save_base64_file_core(
     base64_data: str,
     output_path: str,
     auto_extension: bool = True,
-    force_extension: Optional[str] = None
+    force_extension: Optional[str] = None,
+    mime_type: Optional[str] = None
 ) -> dict:
     """
     保存 Base64 数据到文件（核心函数）
@@ -98,6 +146,7 @@ def save_base64_file_core(
         output_path: 输出文件路径
         auto_extension: 是否自动添加文件扩展名
         force_extension: 强制使用的扩展名
+        mime_type: 指定的 MIME 类型（可选），用于确定文件扩展名
     
     Returns:
         包含操作结果的字典
@@ -107,20 +156,31 @@ def save_base64_file_core(
         if ',' in base64_data and base64_data.startswith('data:'):
             base64_data = base64_data.split(',', 1)[1]
         
+        # 清理 Base64 字符串：移除所有空白字符（空格、换行、制表符等）
+        base64_data = ''.join(base64_data.split())
+        
         # 解码 Base64
         file_data = base64.b64decode(base64_data)
         
         # 检测文件类型
-        detected_ext, mime_type = detect_file_type(file_data)
+        detected_ext, detected_mime = detect_file_type(file_data)
         
         # 处理输出路径
         output_path = Path(output_path)
         
-        # 确定最终的文件扩展名
+        # 确定最终的文件扩展名和 MIME 类型
         final_extension = None
+        final_mime_type = detected_mime
+        
         if force_extension:
+            # 优先使用强制指定的扩展名
             final_extension = force_extension.lstrip('.')
+        elif mime_type:
+            # 如果提供了 MIME 类型参数，使用它来确定扩展名
+            final_mime_type = mime_type
+            final_extension = MIME_TO_EXTENSION.get(mime_type.lower(), detected_ext)
         elif auto_extension:
+            # 使用自动检测的扩展名
             final_extension = detected_ext
         
         # 检查路径是否是目录（没有文件名或以/结尾）
@@ -167,7 +227,7 @@ def save_base64_file_core(
             "file_path": str(output_path.absolute()),
             "file_size": file_size,
             "file_type": detected_ext,
-            "mime_type": mime_type,
+            "mime_type": final_mime_type,
             "message": f"文件保存成功: {output_path.absolute()}"
         }
         

@@ -2,3 +2,4 @@ Flask>=2.3.0
 flask-cors>=4.0.0
 playwright>=1.40.0
 openai
+requests>=2.31.0
