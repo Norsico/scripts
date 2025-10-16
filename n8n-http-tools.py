@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'n8n
 from save_base64 import save_base64_file_core
 from get_bilibili_subtitle import get_bilibili_subtitle_core
 from tts_synthesis import tts_synthesis_core
-from generate_image_gemini import generate_image_gemini_core
+from generate_image_gemini import generate_image_gemini_core, modify_image_with_prompt
 
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
@@ -61,6 +61,11 @@ def index():
                 "path": "/generate-image-gemini",
                 "method": "POST",
                 "description": "使用 Google Gemini 生成图片（Nano Banana / gemini-2.5-flash-image）"
+            },
+            {
+                "path": "/modify-image-with-prompt",
+                "method": "POST",
+                "description": "使用多张图片和提示词修改/生成新图片（支持多图片上传）"
             },
             {
                 "path": "/health",
@@ -324,6 +329,96 @@ def api_generate_image_gemini():
         }), 500
 
 
+@app.route('/modify-image-with-prompt', methods=['POST'])
+def api_modify_image_with_prompt():
+    """
+    使用多张图片和提示词修改/生成新图片
+    
+    POST Body:
+    {
+        "images": [
+            "base64_data1",
+            "base64_data2",
+            ...
+        ],
+        // 或者
+        "images": [
+            {"data": "base64_data", "mime_type": "image/png"},
+            {"data": "base64_data", "mime_type": "image/jpeg"}
+        ],
+        "prompt": "修改图像的提示词",
+        "save_path": "output/path",
+        "aspect_ratio": "16:9"  // 可选：宽高比
+    }
+    """
+    try:
+        body = request.get_json()
+        
+        if not body:
+            return jsonify({
+                "success": False,
+                "error": "请求体不能为空"
+            }), 400
+        
+        # 验证必需参数
+        if 'images' not in body:
+            return jsonify({
+                "success": False,
+                "error": "缺少必需参数: images"
+            }), 400
+        
+        if 'prompt' not in body:
+            return jsonify({
+                "success": False,
+                "error": "缺少必需参数: prompt"
+            }), 400
+        
+        if 'save_path' not in body:
+            return jsonify({
+                "success": False,
+                "error": "缺少必需参数: save_path"
+            }), 400
+        
+        images = body['images']
+        prompt = body['prompt']
+        save_path = body['save_path']
+        aspect_ratio = body.get('aspect_ratio')
+        
+        # 验证 images 是列表
+        if not isinstance(images, list):
+            return jsonify({
+                "success": False,
+                "error": "images 参数必须是列表"
+            }), 400
+        
+        if len(images) == 0:
+            return jsonify({
+                "success": False,
+                "error": "至少需要提供一张图片"
+            }), 400
+        
+        # 调用核心函数
+        result = modify_image_with_prompt(
+            images=images,
+            prompt=prompt,
+            save_path=save_path,
+            aspect_ratio=aspect_ratio
+        )
+        
+        if result.get('success'):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """404 错误处理"""
@@ -362,6 +457,8 @@ def main():
     print("    - TTS 语音合成，批量生成音频文件")
     print(f"  POST http://{HOST}:{PORT}/generate-image-gemini")
     print("    - 使用 Google Gemini 生成图片（Nano Banana）")
+    print(f"  POST http://{HOST}:{PORT}/modify-image-with-prompt")
+    print("    - 使用多张图片和提示词修改/生成新图片")
     print("\n按 Ctrl+C 停止服务")
     print("=" * 60)
     print()
