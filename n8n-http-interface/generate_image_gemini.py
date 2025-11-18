@@ -14,9 +14,9 @@ def generate_image_gemini_core(
     save_path: str,
     aspect_ratio: Optional[str] = None,
     added_prompt: Optional[str] = None,
-    base_url: str = "https://ai.xiangcao.de",
+    base_url: str = "",
     model: str = "gemini-2.5-flash-image-preview",
-    api_key: str = "sk-kMwO7Pqz0tcv0DtPIUjAFGlGA1IvEGMjOD3ObO7oFWiKuf6A"
+    api_key: str = "xxx"
 ) -> dict:
     """
     使用 Gemini 生成图片（核心函数）
@@ -293,9 +293,9 @@ def modify_image_with_prompt(
     save_path: Optional[str] = None,
     aspect_ratio: Optional[str] = None,
     return_base64: bool = False,
-    base_url: str = "https://ai.xiangcao.de",
+    base_url: str = "",
     model: str = "gemini-2.5-flash-image-preview",
-    api_key: str = "sk-kMwO7Pqz0tcv0DtPIUjAFGlGA1IvEGMjOD3ObO7oFWiKuf6A"
+    api_key: str = ""
 ) -> dict:
     """
     使用多张图片和提示词修改/生成新图片
