@@ -110,6 +110,15 @@
 - `return_base64`（可选）：默认读取 `config.json` 中的 `return_base64_default`（未配置则为 false）。为 false 时必须提供 `save_path`。
 - `aspect_ratio`（可选）：宽高比，如 `"16:9"`、`"1:1"`、`"9:16"`。
 
+## Star History
+
+<a href="https://www.star-history.com/#Norsico/n8n-http-tools&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Norsico/n8n-http-tools&type=date&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Norsico/n8n-http-tools&type=date&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Norsico/n8n-http-tools&type=date&legend=bottom-right" />
+ </picture>
+</a>
 ## 许可证
 
 MIT
