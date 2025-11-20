@@ -1,0 +1,8 @@
+{
+  "gemini": {
+    "base_url": "",
+    "model": "gemini-2.5-flash-image-preview",
+    "api_key": "",
+    "return_base64_default": false
+  }
+}
